@@ -1,0 +1,145 @@
+name: Full Stack Application Deployment Test
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.docx"
+      - "**/*.pdf"
+      - "**/*.pptx"
+  workflow_dispatch:
+
+concurrency:
+  group: docker-fullstack
+  cancel-in-progress: false
+
+env:
+  COMPOSE_PROJECT_NAME: docker-fullstack
+
+jobs:
+  deploy-and-test:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file from secrets
+        working-directory: docker-fullstack
+        run: |
+          set -euo pipefail
+          cat > .env << EOF
+          DB_HOST=${{ secrets.DB_HOST }}
+          DB_PORT=${{ secrets.DB_PORT }}
+          DB_NAME=${{ secrets.DB_NAME }}
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          APP_PORT=${{ secrets.APP_PORT }}
+          EOF
+          for key in DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD APP_PORT; do
+            value="$(grep "^${key}=" .env | cut -d= -f2-)"
+            if [ -z "${value}" ]; then
+              echo "Пустой секрет: ${key}"
+              exit 1
+            fi
+          done
+          sed 's/=.*/=***/' .env > .env.masked
+          echo "Файл .env собран из GitHub Secrets. В лог и в артефакт значения не попадают:"
+          cat .env.masked
+
+      - name: Deploy with Docker Compose
+        working-directory: docker-fullstack
+        run: |
+          set -euo pipefail
+          export PATH="/usr/local/bin:/opt/homebrew/bin:${PATH}"
+          docker-compose version
+          docker-compose down -v --remove-orphans
+          docker-compose up -d --build
+          set -a
+          # shellcheck disable=SC1091
+          source .env
+          set +a
+          ready=0
+          for _ in $(seq 1 40); do
+            if curl -fsS "http://127.0.0.1:${APP_PORT}/health" >/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 3
+          done
+          echo "docker-compose ps:"
+          docker-compose ps
+          if [ "${ready}" -ne 1 ]; then
+            echo "Приложение не ответило на /health"
+            docker-compose logs
+            exit 1
+          fi
+
+      - name: Verify containers are running
+        working-directory: docker-fullstack
+        run: |
+          set -euo pipefail
+          export PATH="/usr/local/bin:/opt/homebrew/bin:${PATH}"
+          ps_out="$(docker-compose ps --format '{{.Service}} {{.Status}}')"
+          echo "${ps_out}"
+          grep -q '^app Up' <<<"${ps_out}"
+          grep -q '^db .*healthy' <<<"${ps_out}"
+          echo "Контейнеры запущены, база healthy"
+
+      - name: Run application tests
+        working-directory: docker-fullstack
+        run: |
+          set -euo pipefail
+          export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:${PATH}"
+          bash scripts/verify.sh
+
+      - name: Save Docker logs
+        if: always()
+        working-directory: docker-fullstack
+        run: |
+          set +e
+          export PATH="/usr/local/bin:/opt/homebrew/bin:${PATH}"
+          docker-compose logs > deployment-logs.txt
+          docker images > docker-images.txt
+          docker ps -a > docker-ps.txt
+          if [ ! -f test-report.md ]; then
+            echo "# Отчёт не создан: тесты не дошли до записи файла" > test-report.md
+          fi
+          if [ ! -f .env.masked ]; then
+            printf '%s\n' 'DB_HOST=***' 'DB_PORT=***' 'DB_NAME=***' 'DB_USER=***' 'DB_PASSWORD=***' 'APP_PORT=***' > .env.masked
+          fi
+
+      - name: Save artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-artifacts
+          path: |
+            docker-fullstack/.env.masked
+            docker-fullstack/test-report.md
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Upload Docker logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-logs
+          path: |
+            docker-fullstack/deployment-logs.txt
+            docker-fullstack/docker-images.txt
+            docker-fullstack/docker-ps.txt
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Final summary
+        if: always()
+        working-directory: docker-fullstack
+        run: |
+          echo "Runner: self-hosted"
+          echo "Docker Compose: шаг Deploy with Docker Compose"
+          echo "Секреты записаны в .env, в артефакт ушёл файл без значений"
+          if [ -f test-report.md ]; then
+            echo "----- test-report.md -----"
+            cat test-report.md
+          fi

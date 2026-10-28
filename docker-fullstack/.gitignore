@@ -1,1 +1,6 @@
 .env
+.env.masked
+test-report.md
+deployment-logs.txt
+docker-images.txt
+docker-ps.txt

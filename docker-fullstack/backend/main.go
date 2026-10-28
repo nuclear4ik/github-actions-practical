@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -32,6 +35,31 @@ func main() {
 
 	staticDir := env("STATIC_DIR", "/app/static")
 	fs := http.FileServer(http.Dir(staticDir))
+
+	// CI проверяет этим адресом, что процесс жив и база реально отвечает.
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+		defer cancel()
+		if err := db.PingContext(ctx); err != nil {
+			http.Error(w, "db unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		fmt.Fprint(w, "ok")
+	})
+
+	// Число строк для сверки с SELECT COUNT(*) в тесте workflow.
+	http.HandleFunc("/api/items/count", func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+		defer cancel()
+		var n int
+		if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM items`).Scan(&n); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		fmt.Fprintf(w, "%d", n)
+	})
 
 	http.HandleFunc("/api/items", func(w http.ResponseWriter, r *http.Request) {
 		rows, err := db.Query(`SELECT id, name FROM items ORDER BY id`)

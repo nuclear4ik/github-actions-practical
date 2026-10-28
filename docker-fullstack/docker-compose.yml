@@ -8,13 +8,15 @@ services:
     image: app-backend:1.0.0
     container_name: app
     ports:
-      - "8080:8080"
+      # Оба числа из APP_PORT: секрет задаёт и порт на хосте, и порт процесса.
+      - "${APP_PORT:-8080}:${APP_PORT:-8080}"
     environment:
-      HTTP_PORT: "8080"
+      HTTP_PORT: ${APP_PORT:-8080}
       STATIC_DIR: /app/static
       # Имя сервиса db — это DNS внутри сети Compose, не localhost.
-      DB_HOST: db
-      DB_PORT: "5432"
+      # В CI значение приходит из секрета DB_HOST и должно остаться db.
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-5432}
       DB_USER: ${DB_USER:-app}
       DB_PASSWORD: ${DB_PASSWORD:-secret}
       DB_NAME: ${DB_NAME:-appdb}
