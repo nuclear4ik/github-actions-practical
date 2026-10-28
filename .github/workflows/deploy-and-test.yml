@@ -44,6 +44,7 @@ jobs:
             fi
           done
           sed 's/=.*/=***/' .env > .env.masked
+          cp .env.masked env.masked.txt
           echo "Файл .env собран из GitHub Secrets. В лог и в артефакт значения не попадают:"
           cat .env.masked
 
@@ -114,8 +115,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: deployment-artifacts
+          include-hidden-files: true
           path: |
             docker-fullstack/.env.masked
+            docker-fullstack/env.masked.txt
             docker-fullstack/test-report.md
           retention-days: 30
           if-no-files-found: error
