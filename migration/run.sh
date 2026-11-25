@@ -31,6 +31,9 @@ if [ -f "$STATE/.migration_completed" ]; then
 else
   echo 'Freezing legacy writers and backing up MySQL and files'
   run_private docker compose -f legacy/docker-compose.yml stop mattermost
+  # A failed post-upgrade verification may have removed the old container,
+  # but its named MySQL volume is retained for a safe retry.
+  run_private docker compose -f legacy/docker-compose.yml up -d --wait --wait-timeout 180 mattermost-mysql
   stamp="${GITHUB_RUN_ID:-$(date +%Y%m%d-%H%M%S)}"
   docker exec mattermost-mysql sh -ec 'export MYSQL_PWD="$MYSQL_ROOT_PASSWORD"; exec mysqldump -uroot --single-transaction --routines --triggers --no-tablespaces mattermost' > "$STATE/backups/mysql-$stamp.sql"
   test -s "$STATE/backups/mysql-$stamp.sql"
@@ -51,6 +54,7 @@ SQL
       migration-assist mysql "mmuser:${DB_MYSQL_PASSWORD}@tcp(mattermost-mysql:3306)/mattermost" --mattermost-version=v9.5.0 --fix-artifacts --fix-unicode --fix-varchar --output /work/mysql.output
       migration-assist postgres "postgres://mmuser:${DB_POSTGRES_PASSWORD}@postgres:5432/mattermost?sslmode=disable" --run-migrations --applied-migrations=/work/mysql.output
       migration-assist pgloader --mysql="mmuser:${DB_MYSQL_PASSWORD}@tcp(mattermost-mysql:3306)/mattermost" --postgres="postgres://mmuser:${DB_POSTGRES_PASSWORD}@postgres:5432/mattermost?sslmode=disable" --remove-null-chars --output=/work/migration.load
+      sed -i "s/WITH data only,/WITH data only, include drop,/; s/workers = 8/workers = 2/; s/prefetch rows = 10000/prefetch rows = 1000/" /work/migration.load
       chmod 600 /work/migration.load
     '
   echo 'Running official Mattermost pgloader (include drop)'
@@ -58,7 +62,14 @@ SQL
   # schema reset above makes partial attempts repeatable as well.
   run_private docker run --rm --platform linux/amd64 --network mattermost_network \
     -v "$STATE:/work" mattermost/mattermost-pgloader:latest \
-    pgloader --with 'include drop' /work/migration.load
+    pgloader --on-error-stop --client-min-messages notice --summary /work/summary.txt /work/migration.load
+  for table in Users Posts; do
+    source_count=$(docker exec mattermost-mysql sh -ec 'export MYSQL_PWD="$MYSQL_PASSWORD"; exec mysql -ummuser -N mattermost -e "$1"' sh "SELECT COUNT(*) FROM $table")
+    target_count=$(docker exec postgres psql -X -A -t -U mmuser -d mattermost -c "SELECT COUNT(*) FROM $table")
+    test "$source_count" -gt 0
+    test "$source_count" = "$target_count" || { echo "Row count differs for $table: source=$source_count target=$target_count"; exit 1; }
+    echo "$table rows preserved: $target_count" | tee -a "$RAW"
+  done
   run_private docker run --rm --network mattermost_network -e DB_POSTGRES_PASSWORD \
     --entrypoint bash devops/migration-assist:2544853 -euc '
       migration-assist postgres post-migrate --create-indexes "postgres://mmuser:${DB_POSTGRES_PASSWORD}@postgres:5432/mattermost?sslmode=disable"
