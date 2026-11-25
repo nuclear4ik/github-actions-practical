@@ -22,6 +22,18 @@ for dashboard_id in (1860, 19908, 9628):
     raw = re.sub(r'\$\{DS_PROMETHEUS[^}]*\}', 'prometheus', raw)
     dashboard = json.loads(raw)
     dashboard.pop('__inputs', None)
+    if dashboard_id == 1860:
+        # LinuxKit's root is synthetic rootfs; persistent Docker storage is
+        # mounted at /var/lib. Keep the catalogue dashboard useful on Mac.
+        def adapt_node(value):
+            if isinstance(value, str):
+                return value.replace('mountpoint="/"', 'mountpoint="/var/lib"').replace('Root FS Used', 'Docker data FS Used').replace('RootFS Total', 'Docker data FS Total')
+            if isinstance(value, list):
+                return [adapt_node(item) for item in value]
+            if isinstance(value, dict):
+                return {key: adapt_node(item) for key, item in value.items()}
+            return value
+        dashboard = adapt_node(dashboard)
     if dashboard_id == 9628:
         # The catalogue template assumes Kubernetes release/namespace labels.
         # This deployment uses Compose and a stable release label instead.

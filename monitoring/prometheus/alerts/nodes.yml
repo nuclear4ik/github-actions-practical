@@ -16,9 +16,9 @@ groups:
         annotations:
           summary: Host CPU usage exceeds 90 percent
       - alert: HostDiskAlmostFull
-        expr: node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay"} * 100 < 10
+        expr: node_filesystem_avail_bytes{mountpoint=~"/|/var/lib",fstype!~"tmpfs|overlay|rootfs"} / node_filesystem_size_bytes{mountpoint=~"/|/var/lib",fstype!~"tmpfs|overlay|rootfs"} * 100 < 10
         for: 10m
         labels:
           severity: warning
         annotations:
-          summary: Root filesystem has less than 10 percent free space
+          summary: Host data filesystem has less than 10 percent free space
