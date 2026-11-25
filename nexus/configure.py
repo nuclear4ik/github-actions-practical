@@ -5,6 +5,7 @@ import importlib.util
 import json
 import os
 import subprocess
+import sys
 import time
 from pathlib import Path
 from urllib.error import HTTPError
@@ -45,6 +46,12 @@ def main():
             time.sleep(3)
     else:
         raise SystemExit('Nexus did not become ready')
+    if '--accept-eula' in sys.argv:
+        eula = api('GET', '/system/eula')
+        if not eula['accepted']:
+            eula['accepted'] = True
+            api('POST', '/system/eula', eula)
+            print('Nexus CE EULA accepted with explicit user authorization')
     repositories = api('GET', '/repositories')
     if not any(r['name'] == 'syspulse' for r in repositories):
         api('POST', '/repositories/apt/hosted', {

@@ -22,7 +22,7 @@ groups:
   - orgId: 1
     name: infrastructure
     folder: DevOps
-    interval: 15s
+    interval: 10s
     rules:
       - uid: target-down
         title: Monitoring target down
@@ -31,7 +31,7 @@ groups:
         noDataState: Alerting
         execErrState: Alerting
         annotations:
-          summary: 'Target unavailable {{ $labels.job }} {{ $labels.instance }}'
+          summary: 'Target unavailable {{ $$labels.job }} {{ $$labels.instance }}'
         labels:
           severity: critical
         data:

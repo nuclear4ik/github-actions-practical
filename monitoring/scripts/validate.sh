@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+source scripts/env.sh
 docker compose -f docker-compose.monitoring.yml config -q
 # The Prometheus image normally starts prometheus, not promtool.
 docker run --rm --entrypoint /bin/promtool \

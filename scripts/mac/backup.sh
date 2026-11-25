@@ -62,7 +62,12 @@ for path in .env docker-fullstack/.env nexus/public.gpg; do
   fi
 done
 if [ -d "$PRACTICE_HOME/state" ]; then
-  cp -R "$PRACTICE_HOME/state" "$OUT/private-state"
+  python3 - "$PRACTICE_HOME/state" "$OUT/private-state" <<'PY'
+import shutil,sys
+# Exported private.asc/public.gpg are sufficient; live GPG agent sockets
+# and its duplicate keyring must not be copied into a portable snapshot.
+shutil.copytree(sys.argv[1],sys.argv[2],ignore=shutil.ignore_patterns('gnupg','S.gpg-agent*','S.dirmngr'))
+PY
 fi
 docker info --format '{{.Architecture}}' > "$OUT/architecture.txt"
 docker ps -a --format '{{.Names}} {{.Image}} {{.Status}}' > "$OUT/containers.txt"

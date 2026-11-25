@@ -21,7 +21,6 @@ jobs:
       APP_DB_NAME: ${{ secrets.DB_NAME }}
       PG_EXPORTER_PASSWORD: ${{ secrets.PG_EXPORTER_PASSWORD }}
       GRAFANA_PASSWORD: ${{ secrets.GRAFANA_PASSWORD }}
-      MATTERMOST_WEBHOOK_URL: ${{ secrets.MATTERMOST_WEBHOOK_URL }}
     steps:
       - uses: actions/checkout@v4
       - name: Validate Compose and Prometheus before deployment
@@ -34,7 +33,9 @@ jobs:
             test -s "monitoring/grafana/dashboards/$id.json"
           done
       - name: Deploy without deleting persistent data
-        run: docker compose -f monitoring/docker-compose.monitoring.yml up -d --remove-orphans
+        run: |
+          source monitoring/scripts/env.sh
+          docker compose -f monitoring/docker-compose.monitoring.yml up -d --remove-orphans
       - name: Reload Prometheus configuration
         run: |
           for attempt in {1..30}; do
