@@ -124,10 +124,10 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "count(count(container_last_seen) by (name))",
-          "instant": false,
+          "expr": "count(count by (name) (container_last_seen{name!=\"\"} > time() - 60))",
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "A"
         }
       ],
@@ -333,7 +333,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(container_memory_usage_bytes{name=~\".+\"}[10m])) by (name)",
+          "expr": "sum(container_memory_usage_bytes{name=~\".+\"}) by (name)",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
@@ -430,7 +430,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(container_memory_cache{name=~\".+\"}[10m])) by (name)",
+          "expr": "sum(container_memory_cache{name=~\".+\"}) by (name)",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
@@ -949,14 +949,14 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "count by(name) (count_over_time(container_last_seen{name=~\".+\"}[$__range]))",
+          "expr": "sum(changes(container_start_time_seconds{name=~\".+\"}[$__range])) by (name)",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Container Restarts",
+      "title": "Start time changes",
       "type": "heatmap"
     }
   ],

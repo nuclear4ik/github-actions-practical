@@ -34,6 +34,17 @@ for dashboard_id in (1860, 19908, 9628):
                 return {key: adapt_node(item) for key, item in value.items()}
             return value
         dashboard = adapt_node(dashboard)
+    if dashboard_id == 19908:
+        for panel in dashboard.get('panels', []):
+            if panel.get('id') == 9:
+                panel['targets'][0].update(expr='count(count by (name) (container_last_seen{name!=""} > time() - 60))', instant=True, range=False)
+            if panel.get('id') == 2:
+                panel['targets'][0]['expr'] = 'sum(container_memory_usage_bytes{name=~".+"}) by (name)'
+            if panel.get('id') == 7:
+                panel['targets'][0]['expr'] = 'sum(container_memory_cache{name=~".+"}) by (name)'
+            if panel.get('id') == 10:
+                panel['title'] = 'Start time changes'
+                panel['targets'][0]['expr'] = 'sum(changes(container_start_time_seconds{name=~".+"}[$__range])) by (name)'
     if dashboard_id == 9628:
         # The catalogue template assumes Kubernetes release/namespace labels.
         # This deployment uses Compose and a stable release label instead.
