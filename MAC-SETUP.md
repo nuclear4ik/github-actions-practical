@@ -15,6 +15,9 @@ GitHub CLI авторизован под `nuclear4ik`. Runner
 Инструменты и runner хранятся в
 `~/Library/Application Support/DevOpsPractices`, отдельно от исходников.
 Переменная `PRACTICE_HOME` позволяет изменить этот каталог.
+Рабочие файлы GitHub Actions находятся отдельно в
+`~/.local/share/devops-practices/work`: путь рабочего каталога должен быть
+без пробелов, иначе runner некорректно запускает временные shell-скрипты.
 
 На Mac 8 ГБ памяти. Docker получил около 4 ГБ; для Nexus в учебном Compose
 уменьшены размеры Java heap и direct memory. Метрики node_exporter на Mac

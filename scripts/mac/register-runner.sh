@@ -2,6 +2,8 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/env.sh"
+PRACTICE_WORK_DIR="${PRACTICE_WORK_DIR:-$HOME/.local/share/devops-practices/work}"
+case "$PRACTICE_WORK_DIR" in *' '*) echo 'Runner work path must not contain spaces.'; exit 1 ;; esac
 REPOSITORY="${1:-nuclear4ik/github-actions-practical}"
 gh auth status --hostname github.com
 docker info --format 'Docker {{.ServerVersion}} / {{.Architecture}}'
@@ -15,7 +17,7 @@ if [ ! -f .runner ]; then
   runner_name="devops-$(scutil --get LocalHostName)-$(uname -m)"
   ./config.sh --unattended --url "https://github.com/$REPOSITORY" \
     --token "$registration_token" --name "$runner_name" \
-    --labels devops-practices --work "$PRACTICE_HOME/work"
+    --labels devops-practices --work "$PRACTICE_WORK_DIR"
   unset registration_token
 fi
 if [ ! -f .service ]; then

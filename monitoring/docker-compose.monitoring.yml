@@ -42,14 +42,15 @@ services:
     networks: [monitoring_net]
     restart: unless-stopped
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    image: ghcr.io/google/cadvisor:0.61.1
     container_name: cadvisor
+    command: [--docker_only=true, --housekeeping_interval=15s]
+    cgroup: host
     privileged: true
     devices:
       - /dev/kmsg:/dev/kmsg
     volumes:
       - /:/rootfs:ro
-      - /var/run:/var/run:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /sys:/sys:ro
       - /var/lib/docker:/var/lib/docker:ro
