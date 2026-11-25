@@ -1,0 +1,24 @@
+groups:
+  - name: container-alerts
+    rules:
+      - alert: MonitoringTargetDown
+        expr: up{job=~"cadvisor|postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Monitoring target is unavailable
+      - alert: PostgresDown
+        expr: pg_up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Application PostgreSQL is unavailable
+      - alert: PostgresManyConnections
+        expr: sum by (instance) (pg_stat_database_numbackends{job="postgres"}) > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: PostgreSQL has more than 50 connections

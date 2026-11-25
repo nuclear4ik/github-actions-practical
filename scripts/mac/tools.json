@@ -1,0 +1,28 @@
+{
+  "gh": {
+    "version": "2.105.0",
+    "assets": {
+      "arm64": {
+        "url": "https://github.com/cli/cli/releases/download/v2.105.0/gh_2.105.0_macOS_arm64.zip",
+        "sha256": "2a5d03103ae444927383b93d9ffd65579a26e2eb900ce1cf11f55258d5319ded"
+      },
+      "x86_64": {
+        "url": "https://github.com/cli/cli/releases/download/v2.105.0/gh_2.105.0_macOS_amd64.zip",
+        "sha256": "23602cbccbbdc6285a8520745b714cb927ce2ca621779373c2a20cd8e33fda66"
+      }
+    }
+  },
+  "runner": {
+    "version": "2.338.2",
+    "assets": {
+      "arm64": {
+        "url": "https://github.com/actions/runner/releases/download/v2.338.2/actions-runner-osx-arm64-2.338.2.tar.gz",
+        "sha256": "25a065af409ffa317ab4d5a3b614dd15fc9c40f2172bc1b35a1b1258e919a388"
+      },
+      "x86_64": {
+        "url": "https://github.com/actions/runner/releases/download/v2.338.2/actions-runner-osx-x64-2.338.2.tar.gz",
+        "sha256": "109fff505a34014a7e8d1acb850c33d404811102f572b8fb9788e2fff013cc49"
+      }
+    }
+  }
+}

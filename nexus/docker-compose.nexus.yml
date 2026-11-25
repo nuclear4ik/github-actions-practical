@@ -1,0 +1,19 @@
+name: nexus
+services:
+  nexus:
+    image: sonatype/nexus3:3.80.2
+    container_name: nexus
+    ports:
+      - "127.0.0.1:8081:8081"
+    environment:
+      INSTALL4J_ADD_VM_PARAMS: -Xms256m -Xmx768m -XX:MaxDirectMemorySize=512m -Djava.util.prefs.userRoot=/nexus-data/javaprefs
+    volumes:
+      - nexus_data:/nexus-data
+    networks:
+      - nexus_net
+    restart: unless-stopped
+networks:
+  nexus_net:
+    name: nexus_net
+volumes:
+  nexus_data:

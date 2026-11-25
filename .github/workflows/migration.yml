@@ -1,0 +1,36 @@
+name: Idempotent Mattermost Migration and Upgrade
+on:
+  push:
+    branches: [migration]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mattermost-migration
+  cancel-in-progress: false
+jobs:
+  migrate-and-deploy:
+    runs-on: [self-hosted, devops-practices]
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    env:
+      DB_MYSQL_ROOT_PASSWORD: ${{ secrets.DB_MYSQL_ROOT_PASSWORD }}
+      DB_MYSQL_PASSWORD: ${{ secrets.DB_MYSQL_PASSWORD }}
+      DB_POSTGRES_PASSWORD: ${{ secrets.DB_POSTGRES_PASSWORD }}
+      MM_ADMIN_USER: ${{ secrets.MM_ADMIN_USER }}
+      MM_ADMIN_PASSWORD: ${{ secrets.MM_ADMIN_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Backup migrate deploy and verify preserved data
+        run: bash migration/run.sh
+      - name: Save sanitized migration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mattermost-migration-${{ github.run_id }}
+          path: |
+            evidence/practice4/migration.log
+            evidence/practice4/baseline.json
+          retention-days: 30

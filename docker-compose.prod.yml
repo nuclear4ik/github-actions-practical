@@ -1,0 +1,52 @@
+name: mattermost
+services:
+  mattermost:
+    image: mattermost/mattermost-team-edition:12.0.1
+    platform: linux/amd64
+    container_name: mattermost
+    ports:
+      - "127.0.0.1:8065:8065"
+    environment:
+      MM_SQLSETTINGS_DRIVERNAME: postgres
+      MM_SQLSETTINGS_DATASOURCE: "postgres://mmuser:${DB_POSTGRES_PASSWORD:?Set DB_POSTGRES_PASSWORD}@postgres:5432/mattermost?sslmode=disable&connect_timeout=10"
+      MM_SERVICESETTINGS_SITEURL: http://localhost:8065
+      MM_TEAMSETTINGS_ENABLEOPENSERVER: "false"
+      MM_SERVICESETTINGS_ENABLEINCOMINGWEBHOOKS: "true"
+      MM_PLUGINSETTINGS_ENABLE: "false"
+    volumes:
+      - mattermost_data:/mattermost/data
+      - mattermost_logs:/mattermost/logs
+      - mattermost_config:/mattermost/config
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [mattermost_network]
+    restart: unless-stopped
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: mmuser
+      POSTGRES_PASSWORD: ${DB_POSTGRES_PASSWORD:?Set DB_POSTGRES_PASSWORD}
+      POSTGRES_DB: mattermost
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U mmuser -d mattermost']
+      interval: 5s
+      timeout: 3s
+      retries: 60
+    networks: [mattermost_network]
+    restart: unless-stopped
+networks:
+  mattermost_network:
+    name: mattermost_network
+volumes:
+  mattermost_data:
+    name: mattermost_data
+  mattermost_logs:
+    name: mattermost_logs
+  mattermost_config:
+    name: mattermost_config
+  postgres_data:
+    name: mattermost_postgres_data

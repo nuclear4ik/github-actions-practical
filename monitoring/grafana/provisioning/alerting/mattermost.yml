@@ -1,0 +1,88 @@
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: Mattermost
+    receivers:
+      - uid: mattermost
+        # Mattermost implements Slack incoming webhooks. Grafana 11 uses slack.
+        type: slack
+        disableResolveMessage: false
+        settings:
+          url: $MATTERMOST_WEBHOOK_URL
+          title: '{{ template "default.title" . }}'
+          text: '{{ template "default.message" . }}'
+policies:
+  - orgId: 1
+    receiver: Mattermost
+    group_by: [grafana_folder, alertname]
+    group_wait: 5s
+    group_interval: 15s
+    repeat_interval: 4h
+groups:
+  - orgId: 1
+    name: infrastructure
+    folder: DevOps
+    interval: 15s
+    rules:
+      - uid: target-down
+        title: Monitoring target down
+        condition: B
+        for: 1m
+        noDataState: Alerting
+        execErrState: Alerting
+        annotations:
+          summary: 'Target unavailable {{ $labels.job }} {{ $labels.instance }}'
+        labels:
+          severity: critical
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: up
+              instant: true
+              range: false
+          - refId: B
+            relativeTimeRange: {from: 0, to: 0}
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: lt, params: [1]}
+                  operator: {type: and}
+                  reducer: {type: last, params: []}
+                  type: query
+      - uid: postgres-down
+        title: Application PostgreSQL down
+        condition: B
+        for: 1m
+        noDataState: Alerting
+        execErrState: Alerting
+        annotations:
+          summary: PostgreSQL app-db is unavailable
+        labels:
+          severity: critical
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: pg_up{job="postgres"}
+              instant: true
+              range: false
+          - refId: B
+            relativeTimeRange: {from: 0, to: 0}
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: lt, params: [1]}
+                  operator: {type: and}
+                  reducer: {type: last, params: []}
+                  type: query

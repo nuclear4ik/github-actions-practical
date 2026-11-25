@@ -1,0 +1,57 @@
+name: mattermost
+services:
+  mattermost:
+    image: mattermost/mattermost-team-edition:9.5.0
+    platform: linux/amd64
+    container_name: mattermost
+    ports:
+      - "127.0.0.1:8065:8065"
+    environment:
+      MM_SQLSETTINGS_DRIVERNAME: mysql
+      MM_SQLSETTINGS_DATASOURCE: "mmuser:${DB_MYSQL_PASSWORD:?Set DB_MYSQL_PASSWORD}@tcp(mattermost-mysql:3306)/mattermost?charset=utf8mb4,utf8&readTimeout=30s&writeTimeout=30s"
+      MM_SERVICESETTINGS_SITEURL: http://localhost:8065
+      MM_TEAMSETTINGS_ENABLEOPENSERVER: "false"
+      MM_SERVICESETTINGS_ENABLEINCOMINGWEBHOOKS: "true"
+      MM_PLUGINSETTINGS_ENABLE: "false"
+    volumes:
+      - mattermost_data:/mattermost/data
+      - mattermost_logs:/mattermost/logs
+      - mattermost_config:/mattermost/config
+    networks: [mattermost_network]
+    depends_on:
+      mattermost-mysql:
+        condition: service_healthy
+    restart: unless-stopped
+  mattermost-mysql:
+    image: mysql:8.0
+    container_name: mattermost-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_MYSQL_ROOT_PASSWORD:?Set DB_MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: mattermost
+      MYSQL_USER: mmuser
+      MYSQL_PASSWORD: ${DB_MYSQL_PASSWORD:?Set DB_MYSQL_PASSWORD}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+      - --default-authentication-plugin=mysql_native_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: [CMD-SHELL, 'MYSQL_PWD="$$MYSQL_PASSWORD" mysqladmin ping -h 127.0.0.1 -u mmuser --silent']
+      interval: 5s
+      timeout: 5s
+      retries: 60
+    networks: [mattermost_network]
+    restart: unless-stopped
+networks:
+  mattermost_network:
+    name: mattermost_network
+volumes:
+  mattermost_data:
+    name: mattermost_data
+  mattermost_logs:
+    name: mattermost_logs
+  mattermost_config:
+    name: mattermost_config
+  mysql_data:
+    name: mattermost_mysql_data

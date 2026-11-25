@@ -1,0 +1,58 @@
+name: Deploy and Verify Monitoring
+on:
+  push:
+    branches: [monitoring]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: monitoring-deployment
+  cancel-in-progress: false
+jobs:
+  validate-and-deploy:
+    runs-on: [self-hosted, devops-practices]
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    env:
+      APP_NETWORK: ${{ vars.APP_NETWORK || 'docker-fullstack_app_net' }}
+      APP_DB_USER: ${{ secrets.DB_USER }}
+      APP_DB_NAME: ${{ secrets.DB_NAME }}
+      PG_EXPORTER_PASSWORD: ${{ secrets.PG_EXPORTER_PASSWORD }}
+      GRAFANA_PASSWORD: ${{ secrets.GRAFANA_PASSWORD }}
+      MATTERMOST_WEBHOOK_URL: ${{ secrets.MATTERMOST_WEBHOOK_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose and Prometheus before deployment
+        run: bash monitoring/scripts/validate.sh
+      - name: Create dedicated database role
+        run: bash monitoring/scripts/create-exporter-role.sh
+      - name: Check versioned dashboards
+        run: |
+          for id in 1860 19908 9628; do
+            test -s "monitoring/grafana/dashboards/$id.json"
+          done
+      - name: Deploy without deleting persistent data
+        run: docker compose -f monitoring/docker-compose.monitoring.yml up -d --remove-orphans
+      - name: Reload Prometheus configuration
+        run: |
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error -X POST http://127.0.0.1:9090/-/reload; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
+      - name: Verify metrics and dashboards
+        run: |
+          mkdir -p evidence/practice6
+          set -o pipefail
+          python3 monitoring/scripts/verify.py 2>&1 | tee evidence/practice6/verification.log
+      - name: Save verification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitoring-verification-${{ github.run_id }}
+          path: evidence/practice6/verification.log
+          retention-days: 30
