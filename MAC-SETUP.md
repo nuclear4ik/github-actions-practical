@@ -18,6 +18,8 @@ GitHub CLI авторизован под `nuclear4ik`. Runner
 Рабочие файлы GitHub Actions находятся отдельно в
 `~/.local/share/devops-practices/work`: путь рабочего каталога должен быть
 без пробелов, иначе runner некорректно запускает временные shell-скрипты.
+CI использует отдельный Docker config для публичных образов, чтобы службе
+launchd не требовался интерактивный доступ к macOS Keychain.
 
 На Mac 8 ГБ памяти. Docker получил около 4 ГБ; для Nexus в учебном Compose
 уменьшены размеры Java heap и direct memory. Метрики node_exporter на Mac

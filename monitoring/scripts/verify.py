@@ -28,6 +28,9 @@ def verify():
     query = urlencode({'query': 'pg_up{job="postgres"}'})
     result = get('http://127.0.0.1:9090/api/v1/query?' + query)['data']['result']
     assert result and all(float(r['value'][1]) == 1 for r in result), 'Database is unavailable'
+    query = urlencode({'query': 'count by (name) (container_last_seen{job="cadvisor",name=~"app|app-db|mattermost|postgres"})'})
+    containers = get('http://127.0.0.1:9090/api/v1/query?' + query)['data']['result']
+    assert {'app', 'app-db', 'mattermost', 'postgres'} <= {r['metric']['name'] for r in containers}, 'cAdvisor does not see all four application containers'
     assert get('http://127.0.0.1:3000/api/health')['database'] == 'ok'
     dashboards = get('http://127.0.0.1:3000/api/search?type=dash-db', True)
     assert {f'course-{i}' for i in (1860, 19908, 9628)} <= {d['uid'] for d in dashboards}, 'Missing assigned dashboards'

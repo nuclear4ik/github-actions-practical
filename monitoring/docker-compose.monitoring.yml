@@ -44,7 +44,10 @@ services:
   cadvisor:
     image: ghcr.io/google/cadvisor:0.61.1
     container_name: cadvisor
-    command: [--docker_only=true, --housekeeping_interval=15s]
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=15s
+      - --containerd=/rootfs/run/containerd/containerd.sock
     cgroup: host
     privileged: true
     devices:

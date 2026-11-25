@@ -23,6 +23,8 @@ jobs:
       MM_ADMIN_PASSWORD: ${{ secrets.MM_ADMIN_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
+      - name: Configure noninteractive Docker for public images
+        run: bash scripts/mac/docker-ci.sh
       - name: Backup migrate deploy and verify preserved data
         run: bash migration/run.sh
       - name: Save sanitized migration evidence

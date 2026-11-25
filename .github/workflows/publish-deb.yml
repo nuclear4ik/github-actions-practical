@@ -17,6 +17,8 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+      - name: Configure noninteractive Docker for public images
+        run: bash scripts/mac/docker-ci.sh
       - name: Build static binary and package deb
         run: bash syspulse/scripts/build.sh
       - name: Publish to Nexus hosted APT

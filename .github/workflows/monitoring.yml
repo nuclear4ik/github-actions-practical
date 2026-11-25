@@ -23,6 +23,8 @@ jobs:
       GRAFANA_PASSWORD: ${{ secrets.GRAFANA_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
+      - name: Configure noninteractive Docker for public images
+        run: bash scripts/mac/docker-ci.sh
       - name: Validate Compose and Prometheus before deployment
         run: bash monitoring/scripts/validate.sh
       - name: Create dedicated database role
